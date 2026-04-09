@@ -36,8 +36,25 @@ async def login_action(
 
 @auth_router.post('/signup', response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def signup_user(request:Request, db:SessionDep, username: Annotated[str, Form()], email: Annotated[str, Form()], password: Annotated[str, Form()],):
-    # Implement task 3.4 here. Remove the line below that says "pass" once complete
-    pass
+    try:
+        new_user = RegularUserCreate(
+            username=username, 
+            email=email, 
+            password=encrypt_password(password)
+        )
+        new_user_db = User.model_validate(new_user)
+        db.add(new_user_db)
+        db.commit()
+        flash(request, "Registration completed! Sign in now!")
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    except Exception as e:
+        print(e)
+        db.rollback()
+        raise HTTPException(
+                    status_code=400,
+                    detail="Username or email already exists",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
 
 @auth_router.get("/identify", response_model=UserResponse)
 def get_user_by_id(db: SessionDep, user:AuthDep):
